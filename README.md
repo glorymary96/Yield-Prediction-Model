@@ -1,4 +1,4 @@
-# 2025 U.S. Corn Yield Prediction
+# U.S. Corn Yield Prediction
 
 ## 1. Project Summary & Objective
 The objective of this project was to predict the 2025 U.S. corn yield at the state level using a comprehensive set of monthly features, including:
