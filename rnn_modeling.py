@@ -420,7 +420,7 @@ def tiny_overfit_debug(model, train_loader, steps=200, lr=5e-3):
 # -----------------------------
 # Main
 # -----------------------------
-def rnn_modeling_main(
+def LSTM_model(
         data_path: str):
 
     rnn_df = data_preprocessing_for_rnn(data_path)

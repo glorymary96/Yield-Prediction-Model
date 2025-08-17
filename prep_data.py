@@ -13,12 +13,12 @@ import logging
 # This logger automatically inherits the configuration from main.py
 logger = logging.getLogger(__name__)
 
-# --- 1. Data Loading Stage ---
+
+# --- Data Loading Stage ---
 def load_data(filepath: str) -> pd.DataFrame:
     """Loads data from a given file path, handling file-not-found errors."""
     try:
         df = pd.read_parquet(filepath)
-        # df['date'] = pd.to_datetime(df['date'])
         logger.info(f"Successfully loaded data from {filepath}.")
         return df
     except FileNotFoundError:
@@ -29,8 +29,10 @@ def load_data(filepath: str) -> pd.DataFrame:
         return pd.DataFrame()
 
 
-# --- 2. Feature Engineering Stage ---
-def _calculate_gdd(tmax: pd.Series, tmin: pd.Series, t_base: int = 10, t_cap: int = 30) -> pd.Series:
+# --- Feature Engineering Stage ---
+def _calculate_gdd(
+    tmax: pd.Series, tmin: pd.Series, t_base: int = 10, t_cap: int = 30
+) -> pd.Series:
     """Calculates Growing Degree Days (GDD) for a series."""
     tmax_capped = tmax.clip(upper=t_cap)
     t_avg = (tmax_capped + tmin) / 2
@@ -55,24 +57,24 @@ def process_weather_data(weather_df: pd.DataFrame) -> pd.DataFrame:
     logger.info("Starting weather data processing and feature engineering...")
 
     # Standardize column names
-    df = weather_df.rename(columns={'date': 'Date', 'adm2_name': 'County', 'adm1_name': 'State'}).copy()
-
-    # Filter for the growing season
-    df['Month'] = df['Date'].dt.month
-    df = df[(df['Month'] >= Config.Crop.GROWING_SEASON_START_MONTH) &
-            (df['Month'] <= Config.Crop.GROWING_SEASON_END_MONTH)]
+    df = weather_df.rename(
+        columns={"date": "Date", "adm2_name": "County", "adm1_name": "State"}
+    ).copy()
 
     # Calculate GDD and Heat Stress
-    df['GDD'] = _calculate_gdd(df['tmax'], df['tmin'])
-    df['Heat_Stress'] = _calculate_heat_stress_days(df['tmax'])
+    df["GDD"] = _calculate_gdd(df["tmax"], df["tmin"])
+    df["Heat_Stress"] = _calculate_heat_stress_days(df["tmax"])
+
     logger.info("Weather data processing complete. Created a wide-format feature set.")
     return df
 
 
-# --- 3. External Data Fetching Stage (API) ---
-def _fetch_data_with_retries(params: dict, max_retries: int = 5, backoff_factor: float = 3.0) -> list:
+# --- External Data Fetching Stage (API) ---
+def _fetch_data_with_retries(
+    params: dict, max_retries: int = 5, backoff_factor: float = 3.0
+) -> list:
     """Robust function to fetch data from an API with retry logic and logging."""
-    if not Config.USDA.PARAMS['key']:
+    if not Config.USDA.PARAMS["key"]:
         logger.warning("API key not provided. Skipping API call.")
         return []
 
@@ -81,25 +83,29 @@ def _fetch_data_with_retries(params: dict, max_retries: int = 5, backoff_factor:
             response = requests.get(Config.USDA.BASE_URL, params=params)
             response.raise_for_status()
             data = response.json()
-            if 'data' in data:
-                return data['data']
+            if "data" in data:
+                return data["data"]
             else:
-                logger.warning(f"'data' key not found in response. Response keys: {data.keys()}")
+                logger.warning(
+                    f"'data' key not found in response. Response keys: {data.keys()}"
+                )
                 return []
         except requests.exceptions.HTTPError as e:
             status_code = e.response.status_code
             if status_code in [429, 403, 500, 502, 503, 504]:
-                sleep_time = backoff_factor * (2 ** attempt)
+                sleep_time = backoff_factor * (2**attempt)
                 logger.warning(
-                    f"HTTP Error {status_code}. Retrying in {sleep_time:.2f}s (attempt {attempt + 1}/{max_retries})...")
+                    f"HTTP Error {status_code}. Retrying in {sleep_time:.2f}s (attempt {attempt + 1}/{max_retries})..."
+                )
                 time.sleep(sleep_time)
             else:
                 logger.error(f"Non-retryable HTTP Error: {e} for params: {params}")
                 return []
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-            sleep_time = backoff_factor * (2 ** attempt)
+            sleep_time = backoff_factor * (2**attempt)
             logger.warning(
-                f"{type(e).__name__}. Retrying in {sleep_time:.2f}s (attempt {attempt + 1}/{max_retries})...")
+                f"{type(e).__name__}. Retrying in {sleep_time:.2f}s (attempt {attempt + 1}/{max_retries})..."
+            )
             time.sleep(sleep_time)
         except Exception as e:
             logger.error(f"An unexpected error occurred: {e} for params: {params}")
@@ -114,7 +120,7 @@ def get_state_yield_data(states: tuple, years: tuple) -> pd.DataFrame:
     """Fetches state-level corn yield data from the USDA NASS API with caching."""
     logger.info("Attempting to fetch state-level corn yield data from USDA NASS API...")
 
-    if not Config.USDA.PARAMS['key']:
+    if not Config.USDA.PARAMS["key"]:
         logger.warning("API key not provided. Skipping API data fetch.")
         return pd.DataFrame()
 
@@ -122,12 +128,14 @@ def get_state_yield_data(states: tuple, years: tuple) -> pd.DataFrame:
 
     for state in tqdm(states, desc="Fetching State Data"):
         params = Config.USDA.PARAMS.copy()
-        params.update({
-            'agg_level_desc': 'STATE',
-            'state_name': state.upper(),
-            'year__GE': min(years),
-            'year__LE': max(years)
-        })
+        params.update(
+            {
+                "agg_level_desc": "STATE",
+                "state_name": state.upper(),
+                "year__GE": min(years),
+                "year__LE": max(years),
+            }
+        )
 
         state_data = _fetch_data_with_retries(params)
         if state_data:
@@ -139,23 +147,21 @@ def get_state_yield_data(states: tuple, years: tuple) -> pd.DataFrame:
         return pd.DataFrame()
 
     df = pd.DataFrame(all_data)
-    df = df[['year', 'state_name', 'Value']].rename(columns={
-        'year': 'Year',
-        'state_name': 'State',
-        'Value': 'Yield_bu_acre'
-    })
+    df = df[["year", "state_name", "Value"]].rename(
+        columns={"year": "Year", "state_name": "State", "Value": "Yield_bu_acre"}
+    )
 
-    df['Year'] = pd.to_numeric(df['Year'])
-    df['Yield_bu_acre'] = pd.to_numeric(df['Yield_bu_acre'], errors='coerce')
-    df.dropna(subset=['Yield_bu_acre'], inplace=True)
-    df['State'] = df['State'].str.title()
+    df["Year"] = pd.to_numeric(df["Year"])
+    df["Yield_bu_acre"] = pd.to_numeric(df["Yield_bu_acre"], errors="coerce")
+    df.dropna(subset=["Yield_bu_acre"], inplace=True)
+    df["State"] = df["State"].str.title()
 
     logger.info("Successfully fetched and processed state yield data.")
 
     return df
 
 
-# --- 4. Main Orchestration Function (The Pipeline) ---
+# --- Main Orchestration Function (The Pipeline) ---
 def create_modeling_dataset() -> pd.DataFrame:
     """
     Main pipeline function that orchestrates the data loading, processing,
@@ -170,15 +176,21 @@ def create_modeling_dataset() -> pd.DataFrame:
         return pd.DataFrame()
 
     # Get unique states and years from weather data to use for API calls
-    unique_states = tuple(weather_df['adm1_name'].unique())
-    unique_years = tuple(weather_df['date'].dt.year.unique())
+    unique_states = tuple(weather_df["adm1_name"].unique())
+    unique_years = tuple(weather_df["date"].dt.year.unique())
 
     # Stage 2: Process weather data to create features
     weather_features_df = process_weather_data(weather_df)
     if weather_features_df.empty:
         return pd.DataFrame()
 
-    weather_features_df['Year'] = pd.to_datetime(weather_features_df['Date']).dt.year
+    weather_features_df["Year"] = pd.to_datetime(weather_features_df["Date"]).dt.year
+    weather_features_df.drop(["County", "aoi_id"], axis=1, inplace=True)
+    weather_features_df = (
+        weather_features_df.groupby(["Date", "State"])
+        .mean(numeric_only=True)
+        .reset_index()
+    )
 
     # Stage 3: Fetch yield data from USDA NASS API
     yield_df = get_state_yield_data(unique_states, unique_years)
@@ -186,21 +198,13 @@ def create_modeling_dataset() -> pd.DataFrame:
         return pd.DataFrame()
 
     # Stage 4: Merge weather features and yield data
-    final_df = pd.merge(
-        weather_features_df,
-        yield_df,
-        on=['Year', 'State'],
-        how='left'
-    )
+    final_df = pd.merge(weather_features_df, yield_df, on=["Year", "State"], how="left")
 
-    missing_yield_count = final_df['Yield_bu_acre'].isnull().sum()
+    missing_yield_count = final_df["Yield_bu_acre"].isnull().sum()
     print(f"\nNumber of rows with missing yield data: {missing_yield_count}")
-
-    final_df.drop(['County', 'aoi_id'], axis=1, inplace=True)
-
     logger.info(f"Final modeling dataset created with shape: {final_df.shape}")
-    # logger.info("Head of the final dataset:")
-    # logger.info(final_df.head())
+    logger.info("Head of the final dataset:")
+    logger.info(final_df.head())
 
     if not final_df.empty:
         # Save the final dataset for later use
@@ -211,11 +215,3 @@ def create_modeling_dataset() -> pd.DataFrame:
             logger.error(f"Failed to save final dataset: {e}")
 
     return final_df
-
-
-
-
-
-
-
-
