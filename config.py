@@ -8,7 +8,6 @@ class Config:
     """Centralized configuration for the entire application."""
 
     class USDA:
-        # KEY = '088D5072-1953-3D8C-91E3-62A84E0C49C4'
         BASE_URL = "http://quickstats.nass.usda.gov/api/api_GET/"
         PARAMS = {
             "key": key,
@@ -42,3 +41,4 @@ class Config:
             "Year",
         ]
         target_col = "Yield_bu_acre"
+        train_years_end = 2022
