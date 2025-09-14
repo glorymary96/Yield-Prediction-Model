@@ -6,7 +6,7 @@ from pyspark import SparkContext
 from pyspark.sql import SparkSession, Row
 
 
-output_dir = "./data/"
+output_dir = "../data/"
 
 years = list(range(2015, 2021))  # synthetic years
 
