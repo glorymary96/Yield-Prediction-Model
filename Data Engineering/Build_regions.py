@@ -67,7 +67,7 @@ def US_regions():
     }
 
     # --- Save as single GeoJSON file ---
-    output_path = "../data/US.geojson"
+    output_path = "../data/Regions_US.geojson"
     with open(output_path, "w") as f:
         json.dump(geojson, f)
 

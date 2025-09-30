@@ -34,16 +34,18 @@ if __name__ == "__main__":
     sc = spark.sparkContext
 
     years = np.arange(2000, 2024, 1)
-    States =["Illinois", "Indiana", "Iowa", "Minnesota",
-             "Missouri", "Nebraska", "North Dakota",
-              "Ohio", "South Dakota"]
+    States =['Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Michigan', 'Minnesota',
+            'Missouri', 'Nebraska', 'Ohio', 'South Dakota', 'Tennessee', 'Wisconsin']
 
     rdd_data = sc.parallelize(States).flatMap(get_yield_data)
 
     data = spark.createDataFrame(rdd_data)
 
-    data.printSchema()
+    data = data.select(
+        "Value", "year", "state_name", "county_name",
+    )
 
+    data.toPandas().to_parquet("./data/yield_data.parquet", index=False)
 
 
 

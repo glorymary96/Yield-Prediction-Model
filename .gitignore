@@ -5,3 +5,6 @@ Untitled.ipynb
 linear_model.py
 modeling.py
 paper.py
+.ipynb_checkpoints
+__pycache__
+US_detailed.geojson

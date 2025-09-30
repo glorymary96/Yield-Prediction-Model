@@ -165,6 +165,8 @@ def prepare_dataloaders(rnn_df, batch_size=32, test_year_threshold=2022):
     # 1. Sort the data once for all subsequent operations.
     rnn_df.sort_values(by=["Year", "State"], inplace=True)
 
+    print(rnn_df.shape, len(rnn_df["features"].values))
+
     X_np = np.array(
         [np.array(seq, dtype=np.float32) for seq in rnn_df["features"].values]
     )
@@ -430,7 +432,7 @@ def LSTM_model(
 
     # Prepare loaders (with proper scaling)
     train_loader, val_loader, test_loader, meta = prepare_dataloaders(
-        rnn_df, batch_size=32, test_year_threshold=2022
+        rnn_df, batch_size=31, test_year_threshold=2022
     )
 
     # (Optional) Tiny overfit debug — set to True if you want to sanity check learning

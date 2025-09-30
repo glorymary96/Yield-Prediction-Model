@@ -27,7 +27,7 @@ class Config:
         WEATHER_DATA = "./data/hist_wx_df.parquet"
         WEATHER_DF_DATA = "./data//weather_df.parquet"
         OUTPUT_DATA = "./data/final_modeling_data.parquet"
-        YIELD_DATA = "./data//yield_data.parquet"
+        YIELD_DATA = "./data/yield_data.parquet"
 
     class Model:
         features = [
