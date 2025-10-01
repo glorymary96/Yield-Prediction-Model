@@ -9,13 +9,11 @@ from config import Config
 def USDA_model_preprocessing(data_path:str):
 
     try:
-        df = pd.read_parquet(data_path)
+        wx_hist_df = pd.read_parquet(data_path)
     except FileNotFoundError:
         raise FileNotFoundError(
             f"Parquet file not found at {data_path}. Please provide the dataset or adjust the path."
         )
-
-    wx_hist_df = process_weather_data(df)
 
     # Filter weather data for the growing season
     wx_gs_df = wx_hist_df[
