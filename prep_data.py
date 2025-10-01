@@ -2,6 +2,7 @@ import pandas as pd
 import requests
 import time
 from tqdm import tqdm
+import datetime as dt
 import numpy as np
 
 from functools import lru_cache
@@ -60,6 +61,39 @@ def process_weather_data(weather_df: pd.DataFrame) -> pd.DataFrame:
     df = weather_df.rename(
         columns={"date": "Date", "adm2_name": "County", "adm1_name": "State"}
     ).copy()
+    df['Month'] = df['Date'].dt.month
+    df['Day'] = df['Date'].dt.day
+
+    # --- Find max date ---
+    max_date = df["Date"].max()
+    max_year = df["Date"].dt.year.max()  # scalar integer
+
+    # --- Get states and counties present on max date ---
+    latest_states_counties = df[df["Date"] == max_date][["State", "County"]].drop_duplicates()
+
+    full_dates = pd.date_range(start=max_date + pd.Timedelta(days=1),
+                               end=pd.Timestamp(year=max_year, month=12, day=31))
+
+    DF = []
+    for date in full_dates:
+        temp_df = latest_states_counties.reset_index(drop=True)
+        temp_df['Date'] = date
+        DF.append(temp_df)
+    DF = pd.concat(DF).reset_index(drop=True)
+
+    DF['Month'] = DF['Date'].dt.month
+    DF['Day'] = DF['Date'].dt.day
+
+    # --- Merge average values by State, County, Month, Day ---
+    # Compute averages
+    avg_df = df.groupby(['State', 'County', 'Month', 'Day'], as_index=False)[
+        ['tmax', 'tmin', 'precip', 'swvl1', 'swvl2']
+    ].mean()
+
+    # Merge averages into DF
+    DF = DF.merge(avg_df, on=['State', 'County', 'Month', 'Day'], how='inner')
+
+    df = pd.concat([df, DF[["Date", "State", "County", "tmax", "tmin", "precip", "swvl1", "swvl2"]]])
 
     # Calculate GDD and Heat Stress
     df["GDD"] = _calculate_gdd(df["tmax"], df["tmin"])
@@ -201,6 +235,7 @@ def create_modeling_dataset() -> pd.DataFrame:
     final_df = pd.merge(weather_features_df, yield_df, on=["Year", "State"], how="left")
 
     missing_yield_count = final_df["Yield_bu_acre"].isnull().sum()
+
     print(f"\nNumber of rows with missing yield data: {missing_yield_count}")
     logger.info(f"Final modeling dataset created with shape: {final_df.shape}")
     logger.info("Head of the final dataset:")
