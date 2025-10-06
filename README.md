@@ -1,6 +1,6 @@
 # U.S. Corn Yield Prediction
 
- **Note**: This is a ongoing project. The progress will be updated here. 
+ **Note**: This is an ongoing project. The progress will be updated here. 
 
 ## 1. Project Summary & Objective
 This repository contains the code and analysis for a machine learning model designed to predict **U.S. corn yield** at the state and county level. The model utilizes comprehensive meteorological and soil features to forecast yields, with a focus on capturing the impact of growing conditions.
